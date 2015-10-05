@@ -1,0 +1,38 @@
+{
+  "name": "payeer-client",
+  "description": "A comprehensible and decent client for Payeer, the worst payments gateway.",
+  "version": "0.1.0",
+  "keywords": [
+    "payeer",
+    "payments",
+    "client",
+    "gateway"
+  ],
+  "scripts": {
+    "test": "mocha test/*.js",
+    "coverage": "istanbul cover _mocha -- --recursive test/*.js"
+  },
+  "homepage": "https://github.com/codingpains/payeer-client",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/codingpains/payeer-client.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Gustavo Ortiz",
+    "email": "gustavo.ortiz.monroy@gmail.com",
+    "url": "http://medium.com/@codingpains"
+  },
+  "main": "./lib/client.js",
+  "dependencies": {
+    "card-validator": "^2.1.0"
+  },
+  "devDependencies": {
+    "chai": "^3.3.0",
+    "istanbul": "^0.3.20",
+    "jshint": "^2.8.0",
+    "mocha": "^2.3.3",
+    "node-mocks-http": "^1.4.4",
+    "proxyquire": "^1.7.2"
+  }
+}
