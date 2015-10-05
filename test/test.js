@@ -4,6 +4,25 @@ var mockRequest = require('node-mocks-http');
 var Payeer = require('./../lib/client');
 var errors = require('./../lib/errors');
 var expect = chai.expect;
+var BAD_INPUT = 'BAD_INPUT';
+var PAYEER_UNAUTHORIZED = 'PAYEER_UNAUTHORIZED';
+var PAYEER_REQUEST_FAILED = 'PAYEER_REQUEST_FAILED';
+
+var expectCustomError = function(error, response, errorName, callback) {
+  expect(error).to.exist;
+  expect(response).not.to.exist;
+  expect(error).to.have.property('name', errorName);
+  if (callback) return callback();
+};
+
+var expectCustomResponse = function(error, response, expected, callback) {
+  expect(error).not.to.exist;
+  expect(response).to.exist;
+  Object.keys(expected).forEach(function(key) {
+    expect(response).to.have.property(key, expected[key]);
+  });
+  if (callback) return callback();
+};
 
 describe('Payeer Client', function() {
   describe('#_init', function() {
@@ -170,48 +189,36 @@ describe('Payeer Client', function() {
       });
     });
 
-    it('should return error if not a valid JSON string', function() {
+    it('should return error if not a valid JSON string', function(done) {
       var data = 'invalid json';
       payeer._parseResponse(data, function(error, response) {
-        expect(response).not.to.exist;
-        expect(error).to.exist;
-        expect(error).to.have.property('name', 'BAD_INPUT');
+        expectCustomError(error, response, BAD_INPUT);
       });
       var data = '{invalid: "json"}';
       payeer._parseResponse(data, function(error, response) {
-        expect(response).not.to.exist;
-        expect(error).to.exist;
-        expect(error).to.have.property('name', 'BAD_INPUT');
+        expectCustomError(error, response, BAD_INPUT);
       });
       data = {};
       payeer._parseResponse(data, function(error, response) {
-        expect(response).not.to.exist;
-        expect(error).to.exist;
-        expect(error).to.have.property('name', 'BAD_INPUT');
+        expectCustomError(error, response, BAD_INPUT);
       });
       data = [];
       payeer._parseResponse(data, function(error, response) {
-        expect(response).not.to.exist;
-        expect(error).to.exist;
-        expect(error).to.have.property('name', 'BAD_INPUT');
+        expectCustomError(error, response, BAD_INPUT, done);
       });
     });
 
-    it('should return error if auth_error is found', function() {
-      var data = '{"auth_error": "1"}';
+    it('should return error if auth_error is found', function(done) {
+      var data = '{"authError": "1"}';
       payeer._parseResponse(data, function(error, response) {
-        expect(response).not.to.exist;
-        expect(error).to.exist;
-        expect(error).to.have.property('name', 'PAYEER_UNAUTHORIZED');
+        expectCustomError(error, response, PAYEER_UNAUTHORIZED, done);
       });
     });
 
     it('should return error if response.errors is present and contains elements', function() {
       var data = '{"errors": ["error 1", "error 2"]}';
       payeer._parseResponse(data, function(error, response) {
-        expect(response).not.to.exist;
-        expect(error).to.exist;
-        expect(error).to.have.property('name', 'PAYEER_REQUEST_FAILED');
+        expectCustomError(error, response, PAYEER_REQUEST_FAILED);
         expect(error).to.have.property('errors');
         expect(error.errors).to.have.length(2);
       });
@@ -276,7 +283,7 @@ describe('Payeer Client', function() {
     var payeer;
 
     it('should return a response with expected data', function(done) {
-      var httpsMock = require('./mocks/https')({auth_error: '0', status: 'success'});
+      var httpsMock = require('./mocks/https')('{"auth_error": "0", "status": "success"}');
       var Payeer = proxyquire('./../lib/client', {'https': httpsMock});
       var payeer = new Payeer({
         apiPass: 'testPass',
@@ -288,10 +295,7 @@ describe('Payeer Client', function() {
         b: 2
       };
       payeer._sendRequest([], data, function(error, response) {
-        expect(error).not.to.exist;
-        expect(response).to.exist;
-        expect(response).to.have.property('status', 'success');
-        done()
+        expectCustomResponse(error, response, {status: 'success'}, done);
       });
     });
 
@@ -369,9 +373,7 @@ describe('Payeer Client', function() {
       var payeer = new Payeer(auth);
 
       payeer._authenticate(function(error, response) {
-        expect(error).not.to.exist;
-        expect(response).to.exist;
-        expect(response).to.have.property('authenticated', true)
+        expectCustomResponse(error, response, {authenticated: true});
         expect(payeer).to.have.deep.property('_auth.apiPass', 'testPass');
         expect(payeer).to.have.deep.property('_auth.apiId', 'testUser');
         expect(payeer).to.have.deep.property('_auth.account', 'testAccount');
@@ -392,10 +394,7 @@ describe('Payeer Client', function() {
       });
 
       payeer._authenticate(function(error, response) {
-        expect(error).to.exist;
-        expect(response).not.to.exist;
-        expect(error).to.have.property('name', 'PAYEER_UNAUTHORIZED');
-        done();
+        expectCustomError(error, response, PAYEER_UNAUTHORIZED, done)
       });
     });
 
@@ -411,10 +410,7 @@ describe('Payeer Client', function() {
         account: 'testAccount'
       });
       payeer.authenticate(function(error, response) {
-        expect(error).not.to.exist;
-        expect(response).to.exist;
-        expect(response).to.have.property('authenticated', true);
-        done();
+        expectCustomResponse(error, response, {authenticated: true}, done);
       });
     });
 
@@ -428,13 +424,11 @@ describe('Payeer Client', function() {
       var payeer = new Payeer(auth);
       payeer._auth = auth;
       payeer.authenticate(function(error, response) {
-        expect(error).not.to.exist;
-        expect(response).to.exist;
-        expect(response).to.have.property('authenticated', true);
-        done();
+        expectCustomResponse(error, response, {authenticated: true}, done);
       });
     });
   });
+
   describe('#payout', function() {
 
     it('should return error if arguments are missing', function(done) {
@@ -451,10 +445,7 @@ describe('Payeer Client', function() {
         'param_ACCOUNT_NUMBER': '5555555555554444'
       };
       payeer.payout(data, function(error, response) {
-        expect(error).to.exist;
-        expect(response).not.to.exist;
-        expect(error).to.have.property('name', 'BAD_INPUT');
-        done();
+        expectCustomError(error, response, BAD_INPUT ,done);
       });
     });
 
@@ -474,10 +465,7 @@ describe('Payeer Client', function() {
         'param_ACCOUNT_NUMBER': '5555555555554444'
       };
       payeer.payout(data, function(error, response) {
-        expect(error).not.to.exist;
-        expect(response).to.exist;
-        expect(response).to.have.property('historyId', 9918928);
-        done();
+        expectCustomResponse(error, response, {historyId: 9918928}, done);
       });
     });
 
@@ -531,5 +519,117 @@ describe('Payeer Client', function() {
         done();
       });
     });
-  })
+  });
+
+  describe('#getOperationDetail if data is complete', function() {
+    it('should return response', function(done) {
+      var httpsMock = require('./mocks/https')('{"auth_error": "0", "customData": true}');
+      var Payeer = proxyquire('./../lib/client', {'https': httpsMock});
+      var payeer = new Payeer({
+        apiPass: 'testPass',
+        apiId: 'testUser',
+        account: 'testAccount'
+      });
+      var id = 919191919;
+      payeer.getOperationDetail(id, function(error, response) {
+        expect(error).not.to.exist;
+        expect(response).to.exist;
+        expect(response).to.have.property('customData', true);
+        done();
+      });
+    });
+
+    it('should return error if data is missing', function(done) {
+      var Payeer = require('./../lib/client');
+      var payeer = new Payeer({
+        apiPass: 'testPass',
+        apiId: 'testUser',
+        account: 'testAccount'
+      });
+      payeer.getOperationDetail(null, function(error, response) {
+        expect(error).to.exist;
+        expect(response).not.to.exist;
+        expect(error).to.have.property('name', 'BAD_INPUT');
+        done();
+      });
+    });
+  });
+
+  describe('#getOrderDetail', function() {
+    it('should return error if data is missing', function(done) {
+      var Payeer = require('./../lib/client');
+      var payeer = new Payeer({
+        apiPass: 'testPass',
+        apiId: 'testUser',
+        account: 'testAccount'
+      });
+      var data = { shopId: 99999 };
+      payeer.getOrderDetail(data, function(error, response) {
+        expectCustomError(error, response, BAD_INPUT, done);
+      });
+    });
+    it('should return response if data is complete', function(done) {
+      var httpsMock = require('./mocks/https')('{"auth_error": "0", "customData": true}');
+      var Payeer = proxyquire('./../lib/client', {'https': httpsMock});
+      var payeer = new Payeer({
+        apiPass: 'testPass',
+        apiId: 'testUser',
+        account: 'testAccount'
+      });
+      var data = {
+        shopId: 99999,
+        orderId: 99999
+      };
+      payeer.getOrderDetail(data, function(error, response) {
+        expectCustomResponse(error, response, {customData: true}, done);
+      });
+    });
+  });
+
+  describe('#getExchangeRate', function() {
+    it('should make sure first argument is boolean', function(done) {
+      var httpsMock = require('./mocks/https')('{"auth_error": "0", "customData": true}');
+      var Payeer = proxyquire('./../lib/client', {'https': httpsMock});
+      var payeer = new Payeer({
+        apiPass: 'testPass',
+        apiId: 'testUser',
+        account: 'testAccount'
+      });
+      payeer.getExchangeRate(null, function(error, response) {
+        expectCustomError(error, response, BAD_INPUT);
+        payeer.getExchangeRate(1, function(error, response) {
+          expectCustomError(error, response, BAD_INPUT);
+          payeer.getExchangeRate(false, function(error, response) {
+            expectCustomResponse(error, response, {customData: true}, done);
+          });
+        });
+      });
+    });
+  });
+
+  describe('#userExist', function() {
+    var payeer;
+    beforeEach(function(done) {
+      var httpsMock = require('./mocks/https')('{"auth_error": "0", "errors": []}');
+      var Payeer = proxyquire('./../lib/client', {'https': httpsMock});
+      payeer = new Payeer({
+        apiPass: 'testPass',
+        apiId: 'testUser',
+        account: 'testAccount'
+      });
+      done();
+    });
+
+    it('should return error if userId is not present', function(done) {
+      payeer.userExist(null, function(error, response) {
+        expectCustomError(error, response, BAD_INPUT, done);
+      });
+    });
+
+    it('should return true if request goes through and suer exists', function(done) {
+      payeer.userExist(1, function(error, response) {
+        expectCustomResponse(error, response, {exists: true}, done);
+      });
+    });
+  });
 });
