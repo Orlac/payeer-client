@@ -429,7 +429,7 @@ describe('Payeer Client', function() {
     });
   });
 
-  describe('#payout', function() {
+  describe('#payoutVisaMasterCardBank', function() {
 
     it('should return error if arguments are missing', function(done) {
       var Payeer = require('./../lib/client');
@@ -441,16 +441,17 @@ describe('Payeer Client', function() {
       var data = {
         'curOut': 'USD',
         'curIn': 'USD',
-        'sumOut': 30,
+        'sumIn': 30,
         'param_ACCOUNT_NUMBER': '5555555555554444'
       };
-      payeer.payout(data, function(error, response) {
+      payeer.payoutVisaMasterCardBank(data, function(error, response) {
         expectCustomError(error, response, BAD_INPUT ,done);
       });
     });
 
     it('should return historyId when charge goes through', function(done) {
-      var httpsMock = require('./mocks/https')('{"auth_error": "0", "historyId": 9918928}');
+      var jsonResponse = '{"auth_error": "0", "historyId": 9918928, "outputParams": {"sumIn": "30"}}';
+      var httpsMock = require('./mocks/https')(jsonResponse);
       var Payeer = proxyquire('./../lib/client', {'https': httpsMock});
       var payeer = new Payeer({
         apiPass: 'testPass',
@@ -460,11 +461,13 @@ describe('Payeer Client', function() {
       var data = {
         'curOut': 'USD',
         'curIn': 'USD',
-        'sumOut': 30,
+        'sumIn': 30,
         'ps': 123123,
-        'param_ACCOUNT_NUMBER': '5555555555554444'
+        'param_ACCOUNT_NUMBER': '5555555555554444',
+        'param_EXP_DATE': '03/19'
       };
-      payeer.payout(data, function(error, response) {
+      payeer.payoutVisaMasterCardBank(data, function(error, response) {
+        console.log(error, response);
         expectCustomResponse(error, response, {historyId: 9918928}, done);
       });
     });
@@ -483,7 +486,7 @@ describe('Payeer Client', function() {
         'ps': 123123,
         'param_ACCOUNT_NUMBER': '5555555555554444'
       };
-      payeer.payout(data, function(error, response) {
+      payeer.payoutVisaMasterCardBank(data, function(error, response) {
         expect(error).to.exist;
         expect(response).not.to.exist;
         expect(error).to.have.property('name', 'BAD_INPUT');
